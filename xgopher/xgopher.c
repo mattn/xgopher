@@ -267,7 +267,6 @@ main() {
           if(event.xexpose.count == 0) {
             XPutImage(dpy, win, gc, image[(mode==2?4:(step%4))+(dx>0?0:5)], 0, 0, 0, 0, 200, 200);
             if (mode == 2 && msg->content) {
-XSetWindowBackground(dpy, win, WhitePixel(dpy, 0));    
               XSetForeground(dpy, gc, BlackPixel(dpy, 0));
               Xutf8DrawString(dpy, win, fs, gc, 20, 150, msg->content, strlen(msg->content));
             }
