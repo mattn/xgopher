@@ -177,7 +177,7 @@ main() {
   t = 0;
   while(1) {
     if (t == 0) {
-      if (mode == 0 && msg != NULL) {
+      if (mode == 0 && msg && msg->method) {
         if (strcmp(msg->method, "message") == 0) {
           mode = 2;
           waittime = 60;
