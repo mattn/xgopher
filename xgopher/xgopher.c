@@ -59,13 +59,11 @@ x11_set_window_type(Display *dpy, Window win, char* type) {
 
 static int
 x11_moveresize_window(Display *dpy, Window win, int x, int y, int width, int height) {
-  Status status;
   XEvent xevent;
-  Atom moveresize;
-
-  moveresize = XInternAtom(dpy, "_NET_MOVERESIZE_WINDOW", 0);
+  static Atom moveresize = 0;
   if (!moveresize) {
-    return -1;
+    moveresize = XInternAtom(dpy, "_NET_MOVERESIZE_WINDOW", 0);
+    if (!moveresize) return -1;
   }
 
   xevent.type = ClientMessage;
@@ -77,10 +75,7 @@ x11_moveresize_window(Display *dpy, Window win, int x, int y, int width, int hei
   xevent.xclient.data.l[2] = y;
   xevent.xclient.data.l[3] = width;
   xevent.xclient.data.l[4] = height;
-  status = XSendEvent(dpy, DefaultRootWindow(dpy), 0,
-      SubstructureNotifyMask | SubstructureRedirectMask, &xevent);
-  if (!status) return -1;
-  return 0;
+  return XSendEvent(dpy, DefaultRootWindow(dpy), 0, SubstructureRedirectMask, &xevent);
 }
 
 MSG* free_msg(MSG* top) {
@@ -181,7 +176,7 @@ main() {
 
   t = 0;
   while(1) {
-    if (t++ % 180000 == 0) {
+    if (t == 0) {
       if (mode == 0 && msg != NULL) {
         if (strcmp(msg->method, "message") == 0) {
           mode = 2;
@@ -276,6 +271,7 @@ main() {
           break;
       }
     }
+    if (t++ > 180000) t = 0;
   }
   XCloseDisplay(dpy);
 }
