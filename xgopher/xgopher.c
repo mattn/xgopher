@@ -129,8 +129,8 @@ main() {
   win = XCreateSimpleWindow(dpy, root,
       0, 0, 200, 200, 0, BlackPixel(dpy, 0), WhitePixel(dpy, 0));
   gc = XCreateGC(dpy, win, 0, 0);
-  //fs = XCreateFontSet(dpy, "*-iso10646-1", &miss, &n_miss, &def);
   fs = XCreateFontSet(dpy, "-*-*-*-R-Normal--14-130-75-75-*-*", &miss, &n_miss, &def);
+
 
   for (i = 0; i < 5; i++) {
     XGCValues values;
@@ -218,7 +218,12 @@ main() {
     curr = (mode==2?4:(step%4))+(dx>0?0:5);
     XShapeCombineMask(dpy, win, ShapeBounding, 0, 0, shape[curr], ShapeSet);
     XPutImage(dpy, win, gc, image[curr], 0, 0, 0, 0, 200, 200);
-    x11_moveresize_window(dpy, win, x, y, 200, 200);
+    if (mode == 2 && msg->content) {
+      XSetForeground(dpy, gc, BlackPixel(dpy, 0));
+      Xutf8DrawString(dpy, win, fs, gc, 20, 150, msg->content, strlen(msg->content));
+    } else {
+      x11_moveresize_window(dpy, win, x, y, 200, 200);
+    }
 
     while(XPending(dpy) > 0) {
       XNextEvent(dpy, &event);
@@ -258,18 +263,11 @@ main() {
             }
           }
           break;
-        case Expose:
-          if(event.xexpose.count == 0) {
-            if (mode == 2 && msg->content) {
-              XSetForeground(dpy, gc, BlackPixel(dpy, 0));
-              Xutf8DrawString(dpy, win, fs, gc, 20, 150, msg->content, strlen(msg->content));
-            }
-          }
-          break;
         default:
           break;
       }
     }
+    XFlush(dpy);
     usleep(30000);
   }
   XCloseDisplay(dpy);
