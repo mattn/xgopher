@@ -105,7 +105,7 @@ main() {
   XFontSet fs;
   XEvent event;
   Atom gopherNotify;
-  int i, t, mode = 0;
+  int i, mode = 0;
   int x, y;
   int dx = 10, dy = 0;
   char **miss;
@@ -134,7 +134,7 @@ main() {
 
   for (i = 0; i < 5; i++) {
     XGCValues values;
-    XImage *mask, *maskr;
+    XImage *mask = NULL, *maskr = NULL;
     int ix, iy;
     XpmCreateImageFromData(dpy, xpms[i], &image[i], &mask, NULL);
     shape[i] = XCreatePixmap(dpy, root, 200, 200, 1);
@@ -152,7 +152,6 @@ main() {
     shape[i+5] = XCreatePixmap(dpy, root, 200, 200, 1);
     XPutImage(dpy, shape[i+5], maskgc, maskr, 0, 0, 0, 0, 200, 200);
 
-    XDestroyImage(mask);
     XFreeGC(dpy, maskgc);
   }
 
@@ -174,52 +173,53 @@ main() {
 
   gopherNotify = XInternAtom(dpy, "GopherNotify", 0);
 
-  t = 0;
+  int curr = 0;
   while(1) {
-    if (t == 0) {
-      if (mode == 0 && msg && msg->method) {
-        if (strcmp(msg->method, "message") == 0) {
-          mode = 2;
-          waittime = 60;
-        } else if (strcmp(msg->method, "jump") == 0) {
+    if (mode == 0 && msg && msg->method) {
+      if (strcmp(msg->method, "message") == 0) {
+        mode = 2;
+        waittime = 60;
+      } else if (strcmp(msg->method, "jump") == 0) {
+        mode = 1;
+        dy = -20;
+      }
+    }
+    switch (mode) {
+      case 0:
+        step++;
+        x += dx;
+        y += dy;
+        if (rand() % 40 == 0) {
           mode = 1;
           dy = -20;
         }
-      }
-      switch (mode) {
-        case 0:
-          step++;
-          x += dx;
-          y += dy;
-          if (rand() % 40 == 0) {
-            mode = 1;
-            dy = -20;
-          }
-          break;
-        case 1:
-          step = 0;
-          x += dx / 2;
-          y += dy;
-          dy += 2;
-          if (y > height - 200) {
-            y = height - 200;
-            dy = 0;
-            mode = 0;
-            msg = free_msg(msg);
-          }
-          break;
-        case 2:
-          waittime--;
-          if (waittime <= 0) {
-            mode = 0;
-            msg = free_msg(msg);
-          }
-          break;
-      }
-      if ((dx < 0 && x < 0) || (dx > 0 && x > width - 200)) dx = -dx;
-      XShapeCombineMask(dpy, win, ShapeBounding, 0, 0, shape[(mode==2?4:(step%4))+(dx>0?0:5)], ShapeSet);
-      x11_moveresize_window(dpy, win, x, y, 200, 200);
+        break;
+      case 1:
+        step = 0;
+        x += dx / 2;
+        y += dy;
+        dy += 2;
+        if (y > height - 200) {
+          y = height - 200;
+          dy = 0;
+          mode = 0;
+          msg = free_msg(msg);
+        }
+        break;
+      case 2:
+        waittime--;
+        if (waittime <= 0) {
+          mode = 0;
+          msg = free_msg(msg);
+        }
+        break;
     }
+    if ((dx < 0 && x < 0) || (dx > 0 && x > width - 200)) dx = -dx;
+    curr = (mode==2?4:(step%4))+(dx>0?0:5);
+    XShapeCombineMask(dpy, win, ShapeBounding, 0, 0, shape[curr], ShapeSet);
+    XPutImage(dpy, win, gc, image[curr], 0, 0, 0, 0, 200, 200);
+    x11_moveresize_window(dpy, win, x, y, 200, 200);
+
     while(XPending(dpy) > 0) {
       XNextEvent(dpy, &event);
       switch(event.type) {
@@ -260,7 +260,6 @@ main() {
           break;
         case Expose:
           if(event.xexpose.count == 0) {
-            XPutImage(dpy, win, gc, image[(mode==2?4:(step%4))+(dx>0?0:5)], 0, 0, 0, 0, 200, 200);
             if (mode == 2 && msg->content) {
               XSetForeground(dpy, gc, BlackPixel(dpy, 0));
               Xutf8DrawString(dpy, win, fs, gc, 20, 150, msg->content, strlen(msg->content));
@@ -271,7 +270,7 @@ main() {
           break;
       }
     }
-    if (t++ > 180000) t = 0;
+    usleep(30000);
   }
   XCloseDisplay(dpy);
 }
