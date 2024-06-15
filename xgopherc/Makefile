@@ -1,5 +1,5 @@
 SRCS = \
-	xgopherc.c
+	main.c
 
 OBJS = $(subst .c,.o,$(SRCS))
 
