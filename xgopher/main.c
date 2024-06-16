@@ -90,7 +90,7 @@ MSG* free_msg(MSG* top) {
 }
 
 int
-main() {
+main(int argc, char* argv[]) {
   Display *dpy;
   Drawable root;
   Window win;
@@ -112,6 +112,20 @@ main() {
   char *def;
   int n_miss;
   MSG *msg = NULL;
+  int foreground = 0;
+
+  for (i = 1; i < argc; i++) {
+    if (strcmp(argv[i], "-f") == 0)
+      foreground = 1;
+  }
+
+  if (foreground == 0) {
+    pid_t pid = fork();
+    if (pid < 0)
+      exit(EXIT_FAILURE);
+    if (pid > 0)
+      exit(EXIT_SUCCESS);
+  }
 
   srand(time(NULL));
   dx = rand() % 10 + 5;
