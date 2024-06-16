@@ -206,11 +206,11 @@ main(int argc, char* argv[]) {
       } else if (strcmp(msg->method, "jump") == 0) {
         mode = 1;
         dy = -20;
-      } else if (strcmp(msg->method, "exit") == 0) {
-        waittime = 30;
-        mode = 3;
-        da = -5;
       }
+    }
+    if (msg && strcmp(msg->method, "exit") == 0) {
+      waittime = 30;
+      da = -5;
     }
     switch (mode) {
       case 0:
@@ -241,18 +241,12 @@ main(int argc, char* argv[]) {
           msg = free_msg(msg);
         }
         break;
-      case 3:
-        step++;
-        x += dx;
-        y += dy;
-        waittime--;
-        break;
     }
 
     if (da != 0) {
       alpha += da;
-      if (alpha > 100) {
-        alpha = 100;
+      if (alpha > 99) {
+        alpha = 99;
         da = 0;
       } else if (alpha < 0) {
         alpha = 0;
@@ -268,7 +262,7 @@ main(int argc, char* argv[]) {
     if ((dx < 0 && x < 0) || (dx > 0 && x > width - 200)) dx = -dx;
     curr = (mode==2?4:(step%4))+(dx>0?0:5);
     XShapeCombineMask(dpy, win, ShapeBounding, 0, 0, shape[curr], ShapeSet);
-    if (da != 0) x11_set_opacity(dpy, win, (unsigned long)((alpha - 101) * (0xffffffff / 100)));
+    if (da != 0) x11_set_opacity(dpy, win, (unsigned long)((alpha - 100) * (0xffffffff / 100)));
 
     XPutImage(dpy, win, gc, image[curr], 0, 0, 0, 0, 200, 200);
     if (mode == 2 && msg->content) {
