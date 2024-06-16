@@ -15,9 +15,8 @@ Atom gopherNotify;
 
 static int
 enum_windows(Display *dpy, Window win) {
-  Window parent, *children;
+  Window parent, *children = NULL;
   unsigned int count = 0;
-  int n = 0;
   Window w = 0;
   char *name = NULL;
 
@@ -31,8 +30,12 @@ enum_windows(Display *dpy, Window win) {
     fprintf(stderr, "error: XQueryTree error\n");
     return 0;
   }
-  for (n = 0; w == 0 && n < count; ++n) {
-    w = enum_windows(dpy, children[n]);
+
+  if (count > 0) {
+    int n;
+    for (n = 0; w == 0 && n < count; n++) {
+      w = enum_windows(dpy, children[n]);
+    }
   }
   XFree(children);
   return w;
@@ -68,6 +71,8 @@ main(int argc, char *const argv[]) {
         return 1;
     }
   }
+
+  srand(time(NULL));
 
   dpy = XOpenDisplay(NULL);
   if (dpy == NULL) {

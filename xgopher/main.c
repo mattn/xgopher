@@ -199,11 +199,12 @@ main(int argc, char* argv[]) {
 
   int curr = 0;
   while(1) {
-    if (mode == 0 && msg && msg->method) {
+    if (mode == 0 && msg) {
       if (strcmp(msg->method, "message") == 0) {
         mode = 2;
         waittime = 60;
       } else if (strcmp(msg->method, "jump") == 0) {
+        msg = free_msg(msg);
         mode = 1;
         dy = -20;
       }
@@ -231,7 +232,6 @@ main(int argc, char* argv[]) {
           y = height - 200;
           dy = 0;
           mode = 0;
-          msg = free_msg(msg);
         }
         break;
       case 2:
@@ -265,7 +265,7 @@ main(int argc, char* argv[]) {
     if (da != 0) x11_set_opacity(dpy, win, (unsigned long)((alpha - 100) * (0xffffffff / 100)));
 
     XPutImage(dpy, win, gc, image[curr], 0, 0, 0, 0, 200, 200);
-    if (mode == 2 && msg->content) {
+    if (mode == 2 && msg && msg->content) {
       XSetForeground(dpy, gc, BlackPixel(dpy, 0));
       Xutf8DrawString(dpy, win, fs, gc, 20, 150, msg->content, strlen(msg->content));
     } else {
