@@ -47,7 +47,7 @@ main(int argc, char *const argv[]) {
   char* content = NULL;
   char* link = NULL;
 
-  while((result = getopt(argc,argv,"jm:l:")) != -1){
+  while((result = getopt(argc,argv,"jxm:l:")) != -1){
     switch(result){
       case 'j':
         method = "jump";
@@ -58,6 +58,9 @@ main(int argc, char *const argv[]) {
         break;
       case 'l':
         link = optarg;
+        break;
+      case 'x':
+        method = "exit";
         break;
       case ':':
       case '?':

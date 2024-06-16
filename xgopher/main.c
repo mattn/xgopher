@@ -50,6 +50,12 @@ x11_set_property(Display *dpy, Window win, char *atom, int state) {
 }
 
 static void
+x11_set_opacity(Display *dpy, Window win, unsigned long opacity) {
+  Atom _NET_WM_WINDOW_OPACITY = XInternAtom(dpy, "_NET_WM_WINDOW_OPACITY", 0);
+  XChangeProperty(dpy, win, _NET_WM_WINDOW_OPACITY, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&opacity, 1L);
+}
+
+static void
 x11_set_window_type(Display *dpy, Window win, char* type) {
   Atom _NET_WM_WINDOW_TYPE = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", 0);
   Atom _NET_WM_WINDOW_TYPE_DOCK = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DOCK", 0);
@@ -107,7 +113,8 @@ main(int argc, char* argv[]) {
   Atom gopherNotify;
   int i, mode = 0;
   int x, y;
-  int dx = 0, dy = 0;
+  int dx = 0, dy = 0, da = 5;
+  int alpha = 0;
   char **miss;
   char *def;
   int n_miss;
@@ -148,7 +155,6 @@ main(int argc, char* argv[]) {
   gc = XCreateGC(dpy, win, 0, 0);
   fs = XCreateFontSet(dpy, "-*-*-*-R-Normal--14-130-75-75-*-*", &miss, &n_miss, &def);
 
-
   for (i = 0; i < 5; i++) {
     XGCValues values;
     XImage *mask = NULL, *maskr = NULL;
@@ -177,6 +183,7 @@ main(int argc, char* argv[]) {
   x11_set_property(dpy, win, "_NET_WM_STATE_SKIP_TASKBAR", 1);
   x11_set_property(dpy, win, "_NET_WM_STATE_SKIP_PAGER", 1);
   x11_set_property(dpy, win, "_NET_WM_STATE_STICKY", 1);
+  x11_set_property(dpy, win, "_NET_WM_WINDOW_OPACITY", 200);
   x11_set_window_type(dpy, win, "_NET_WM_WINDOW_TYPE_DOCK");
 
   x = -200;
@@ -199,6 +206,10 @@ main(int argc, char* argv[]) {
       } else if (strcmp(msg->method, "jump") == 0) {
         mode = 1;
         dy = -20;
+      } else if (strcmp(msg->method, "exit") == 0) {
+        waittime = 30;
+        mode = 3;
+        da = -5;
       }
     }
     switch (mode) {
@@ -230,10 +241,35 @@ main(int argc, char* argv[]) {
           msg = free_msg(msg);
         }
         break;
+      case 3:
+        step++;
+        x += dx;
+        y += dy;
+        waittime--;
+        break;
     }
+
+    if (da != 0) {
+      alpha += da;
+      if (alpha > 100) {
+        alpha = 100;
+        da = 0;
+      } else if (alpha < 0) {
+        alpha = 0;
+        da = 0;
+        break;
+      }
+    }
+
+    if (mode == 3 && waittime < 0) {
+      break;
+    }
+
     if ((dx < 0 && x < 0) || (dx > 0 && x > width - 200)) dx = -dx;
     curr = (mode==2?4:(step%4))+(dx>0?0:5);
     XShapeCombineMask(dpy, win, ShapeBounding, 0, 0, shape[curr], ShapeSet);
+    if (da != 0) x11_set_opacity(dpy, win, (unsigned long)((alpha - 101) * (0xffffffff / 100)));
+
     XPutImage(dpy, win, gc, image[curr], 0, 0, 0, 0, 200, 200);
     if (mode == 2 && msg->content) {
       XSetForeground(dpy, gc, BlackPixel(dpy, 0));
