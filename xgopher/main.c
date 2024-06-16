@@ -107,11 +107,14 @@ main() {
   Atom gopherNotify;
   int i, mode = 0;
   int x, y;
-  int dx = 10, dy = 0;
+  int dx = 0, dy = 0;
   char **miss;
   char *def;
   int n_miss;
   MSG *msg = NULL;
+
+  srand(time(NULL));
+  dx = rand() % 10 + 5;
 
   setlocale(LC_CTYPE,"");
 
