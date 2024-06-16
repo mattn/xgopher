@@ -11,46 +11,71 @@
 #include <time.h>
 #include <jansson.h>
 
-Atom gopherNotify;
 
-static int
-enum_windows(Display *dpy, Window win) {
+typedef struct {
+  Window w[100];
+  int n;
+} WINLIST;
+
+typedef void (*enum_callback)(Window, void*);
+
+static void
+list_windows(Window w, void* data) {
+  WINLIST *wl = (WINLIST*) data;
+  wl->w[wl->n++] = w;
+}
+
+static void
+enum_windows(Display *dpy, Window win, enum_callback f, void* data) {
   Window parent, *children = NULL;
   unsigned int count = 0;
-  Window w = 0;
   char *name = NULL;
 
   XFetchName(dpy, win, &name);
-  if (name && strcmp("Gopher", name) == 0) {
-    return win;
+  if (name) {
+    if (strcmp("Gopher", name) == 0) {
+      if (f) f(win, data);
+      XFree(name);
+      return;
+    }
+    XFree(name);
   }
-  if (name) XFree(name);
 
   if (XQueryTree(dpy, win, &win, &parent, &children, &count) == 0) {
-    fprintf(stderr, "error: XQueryTree error\n");
-    return 0;
+    return;
   }
 
   if (count > 0) {
     int n;
-    for (n = 0; w == 0 && n < count; n++) {
-      w = enum_windows(dpy, children[n]);
+    for (n = 0; n < count; n++) {
+      enum_windows(dpy, children[n], f, data);
     }
   }
   XFree(children);
-  return w;
+}
+
+static void
+send_message(Display *dpy, Window win, const char* method, const char* content, const char* link) {
+  char* p;
+  json_t *object = json_object();
+  json_object_set(object, "method", json_string("exit"));
+  json_object_set(object, "content", json_string(content));
+  json_object_set(object, "link", json_string(link));
+  p = json_dumps(object, 0);
+  XChangeProperty(dpy, win, XInternAtom(dpy, "GopherNotify", 0), XA_STRING, 8,
+      PropModeAppend, (unsigned char*) p, (int) strlen(p));
+  json_decref(object);
 }
 
 int
 main(int argc, char *const argv[]) {
   Display *dpy;
-  Window win;
   int result, r = 0;
   char* method = NULL;
   char* content = NULL;
   char* link = NULL;
 
-  while((result = getopt(argc,argv,"jxm:l:")) != -1){
+  while((result = getopt(argc,argv,"jxXm:l:")) != -1){
     switch(result){
       case 'j':
         method = "jump";
@@ -64,6 +89,9 @@ main(int argc, char *const argv[]) {
         break;
       case 'x':
         method = "exit";
+        break;
+      case 'X':
+        method = "exit-all";
         break;
       case ':':
       case '?':
@@ -79,21 +107,19 @@ main(int argc, char *const argv[]) {
     fprintf(stderr, "error: cannot connect to X server\n");
     return 1;
   }
-  gopherNotify = XInternAtom(dpy, "GopherNotify", 0);
-  win = enum_windows(dpy, DefaultRootWindow(dpy));
-  if (win == 0) {
+  WINLIST wl = {0};
+  enum_windows(dpy, DefaultRootWindow(dpy), list_windows, &wl);
+  if (wl.n == 0) {
     fprintf(stderr, "gopher not found\n");
     r = 1;
-  } else {
-    char* p;
-    json_t *object = json_object();
-    json_object_set(object, "method", json_string(method));
-    json_object_set(object, "content", json_string(content));
-    json_object_set(object, "link", json_string(link));
-    p = json_dumps(object, 0);
-    XChangeProperty(dpy, win, gopherNotify, XA_STRING, 8,
-        PropModeAppend, (unsigned char*) p, (int) strlen(p));
-    json_decref(object);
+  } else if (method) {
+    if (strcmp(method, "exit-all") == 0) {
+      int n;
+      for (n = 0; n < wl.n; n++) send_message(dpy, wl.w[n], "exit", content, link);
+    } else {
+      Window win = wl.w[rand() % wl.n];
+      send_message(dpy, win, "exit", content, link);
+    }
   }
   XCloseDisplay(dpy);
   return r;
